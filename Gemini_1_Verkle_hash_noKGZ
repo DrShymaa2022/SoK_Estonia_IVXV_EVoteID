@@ -1,0 +1,173 @@
+import { useState, useEffect, createElement } from 'react';
+
+// Helper function to simulate SHA-256 hashing
+async function sha256(message) {
+    // Encode the message as a Uint8Array
+    const msgBuffer = new TextEncoder().encode(message);
+    // Hash the message
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    // Convert ArrayBuffer to Array of bytes
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    // Convert bytes to hex string
+    const hexHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hexHash;
+}
+
+function App() {
+    const [votes, setVotes] = useState([]);
+    const [voteInput, setVoteInput] = useState('');
+    const [verkleCommitment, setVerkleCommitment] = useState('N/A (No votes yet)');
+    const [isCalculating, setIsCalculating] = useState(false);
+
+    // Simulate the "background" calculation of the Verkle Tree commitment
+    useEffect(() => {
+        // Reset commitment if no votes are present
+        if (votes.length === 0 && verkleCommitment !== 'N/A (No votes yet)') {
+            setVerkleCommitment('N/A (No votes yet)');
+            return;
+        }
+
+        // Only trigger calculation if there are votes and no calculation is already in progress
+        if (votes.length > 0 && !isCalculating) {
+            setIsCalculating(true);
+            // Simulate a network/computation delay for background processing
+            const delay = Math.random() * 1000 + 500; // Random delay between 0.5 to 1.5 seconds
+
+            // This function simulates the cryptographic calculation that would happen in the background.
+            // In a real IVXV system, this would involve complex cryptographic operations
+            // like KZG polynomial commitments and proofs, potentially offloaded to a Web Worker
+            // or a dedicated server-side process, to avoid blocking the main UI thread.
+            const simulateVerkleCalculation = async () => {
+                // For this simulation, we concatenate all votes and hash them.
+                // In a true Verkle Tree, individual vote hashes would be aggregated
+                // into a polynomial commitment.
+                const dataToCommit = votes.join('|'); // Concatenate all votes with a separator
+                const commitment = await sha256(dataToCommit); // Calculate SHA-256 hash
+                setVerkleCommitment(commitment); // Update the commitment state
+                setIsCalculating(false); // End the calculation state
+            };
+
+            // Schedule the simulated calculation to run after the delay
+            const timer = setTimeout(simulateVerkleCalculation, delay);
+
+            // Cleanup function to clear the timeout if the component unmounts or
+            // dependencies change before the timeout fires.
+            return () => clearTimeout(timer);
+        }
+    }, [votes]); // This effect runs whenever the 'votes' array changes
+
+    // Handles the submission of a new vote
+    const handleCastVote = (e) => {
+        e.preventDefault(); // Prevent default form submission behavior
+        // Only allow casting a vote if input is not empty and no calculation is in progress
+        if (voteInput.trim() && !isCalculating) {
+            setVotes(prevVotes => [...prevVotes, voteInput.trim()]); // Add new vote to the list
+            setVoteInput(''); // Clear the input field
+        }
+    };
+
+    return createElement('div', { className: 'container' },
+        createElement('style', null, `
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #f0f4f8;
+                color: #333;
+            }
+            .container {
+                max-width: 800px;
+                margin: 40px auto;
+                padding: 20px;
+                background-color: #fff;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            }
+            .button-primary {
+                background-color: #4f46e5;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-weight: 600;
+                transition: background-color 0.3s ease;
+            }
+            .button-primary:hover:not(:disabled) {
+                background-color: #4338ca;
+            }
+            .button-primary:disabled {
+                background-color: #a5b4fc;
+                cursor: not-allowed;
+            }
+            .input-field {
+                border: 1px solid #d1d5db;
+                padding: 10px 15px;
+                border-radius: 8px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .spinner {
+                border: 4px solid rgba(0, 0, 0, 0.1);
+                border-left-color: #4f46e5;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `),
+        createElement('h1', { className: 'text-3xl font-bold text-center mb-6 text-indigo-700' }, 'IVXV Verkle Tree Online Calculation Simulation'),
+        createElement('p', { className: 'mb-4 text-gray-700' },
+            'This example simulates the concept of calculating Verkle Tree commitments in the background, as suggested in Section 6.5 and Fig. 4 of the IVXV paper. In a real system, this would involve advanced cryptographic operations (KZG polynomial commitments) to cryptographically prove the integrity and count of votes without delaying the voting process.'
+        ),
+        createElement('p', { className: 'mb-6 text-gray-700' },
+            'Enter a vote (e.g., "Candidate A" or "Yes") and click "Cast Vote". Observe how the "Verkle Tree Commitment" updates after a short delay, simulating background processing, while the UI remains responsive.'
+        ),
+
+        createElement('form', { onSubmit: handleCastVote, className: 'flex flex-col sm:flex-row gap-4 mb-8' },
+            createElement('input', {
+                type: 'text',
+                value: voteInput,
+                onChange: (e) => setVoteInput(e.target.value),
+                placeholder: 'Enter your vote (e.g., "Candidate X")',
+                className: 'input-field flex-grow rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500',
+                disabled: isCalculating // Disable input while calculating
+            }),
+            createElement('button', {
+                type: 'submit',
+                className: `button-primary flex items-center justify-center gap-2 rounded-lg shadow-md ${isCalculating ? 'opacity-70 cursor-not-allowed' : ''}`,
+                disabled: isCalculating // Disable button while calculating
+            },
+                isCalculating && createElement('div', { className: 'spinner' }), // Show spinner when calculating
+                isCalculating ? 'Calculating...' : 'Cast Vote'
+            )
+        ),
+
+        createElement('div', { className: 'bg-indigo-50 p-6 rounded-lg shadow-inner mb-8' },
+            createElement('h2', { className: 'text-xl font-semibold text-indigo-800 mb-3' }, 'Current Verkle Tree Commitment'),
+            createElement('p', { className: 'break-all text-gray-800 font-mono text-sm' },
+                verkleCommitment
+            ),
+            createElement('p', { className: 'text-xs text-gray-500 mt-2' },
+                '(In a real system, this commitment would cryptographically prove the integrity and total count of all votes.)'
+            )
+        ),
+
+        createElement('div', { className: 'bg-gray-50 p-6 rounded-lg shadow-inner' },
+            createElement('h2', { className: 'text-xl font-semibold text-gray-800 mb-3' }, 'Recorded Votes'),
+            votes.length === 0 ?
+                createElement('p', { className: 'text-gray-600 italic' }, 'No votes cast yet.') :
+                createElement('ul', { className: 'list-disc list-inside space-y-2' },
+                    votes.map((vote, index) =>
+                        createElement('li', { key: index, className: 'text-gray-700' },
+                            `Vote ${index + 1}: "${vote}"`
+                        )
+                    )
+                )
+        )
+    );
+}
+
+export default App;
+
+
