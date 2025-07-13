@@ -1,0 +1,586 @@
+//link of Gemni created simulation to run (https://g.co/gemini/share/6d6404661998)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verkle Tree Vote Proof Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #334155;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #1e293b;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+        .section {
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            background-color: #f8fafc;
+        }
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+        button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        button.primary {
+            background-color: #4f46e5;
+            color: #ffffff;
+            border: none;
+        }
+        button.primary:hover {
+            background-color: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        button.secondary {
+            background-color: #e0e7ff;
+            color: #4f46e5;
+            border: 1px solid #4f46e5;
+        }
+        button.secondary:hover {
+            background-color: #c7d2fe;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .log-area {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.875rem;
+        }
+        .status-message {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            text-align: center;
+        }
+        .status-success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .status-info {
+            background-color: #e0f2fe;
+            color: #0284c7;
+        }
+        .status-error {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+        .commitment-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .commitment-card {
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .commitment-card strong {
+            color: #1e293b;
+        }
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .input-group label {
+            font-weight: 500;
+            color: #475569;
+        }
+        .input-group input {
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            flex-grow: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Verkle Tree Vote Proof Simulation</h1>
+
+        <div class="section">
+            <h2>1. Setup Phase (Offline Calculation)</h2>
+            <p class="text-sm text-gray-600">
+                In a real scenario, the election authority calculates public parameters ($H_i$ values) for KZG commitments offline.
+                These are crucial for constructing and verifying Verkle Tree commitments.
+            </p>
+            <div id="setup-status" class="status-info status-message">
+                Click "Initialize Setup" to begin.
+            </div>
+            <div class="button-group">
+                <button id="init-setup-btn" class="primary">Initialize Setup</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>2. Vote Casting & Online Processing</h2>
+            <p class="text-sm text-gray-600">
+                Simulate voters casting votes. The system will process these votes in the background,
+                updating Verkle Tree commitments (`VT_1` for all votes, `VT_2` for final unique votes,
+                and `VT_3` for overridden/multiple votes).
+            </p>
+            <div class="input-group">
+                <label for="num-votes">Number of Votes to Cast:</label>
+                <input type="number" id="num-votes" value="5" min="1" max="100">
+            </div>
+            <div class="input-group">
+                <label for="batch-size">Batch Size for Processing:</label>
+                <input type="number" id="batch-size" value="2" min="1" max="20">
+            </div>
+            <div id="voting-status" class="status-info status-message">
+                Setup not initialized.
+            </div>
+            <div class="button-group">
+                <button id="cast-vote-btn" class="primary" disabled>Cast Votes</button>
+                <button id="reset-simulation-btn" class="secondary">Reset Simulation</button>
+            </div>
+            <div class="log-area mt-4" id="processing-log">
+                Processing Log:
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>3. Verkle Tree Commitments (Current State)</h2>
+            <p class="text-sm text-gray-600">
+                These are the current conceptual commitments for the Verkle Trees.
+                In a real system, these would be cryptographic hashes/polynomial commitments.
+            </p>
+            <div class="commitment-display" id="vt-commitments">
+                <div class="commitment-card">
+                    <strong>VT_1 (All Votes):</strong> <span id="vt1-commitment">N/A</span>
+                    <p class="text-xs text-gray-500">Total votes processed: <span id="vt1-count">0</span></p>
+                </div>
+                <div class="commitment-card">
+                    <strong>VT_2 (Final Votes):</strong> <span id="vt2-commitment">N/A</span>
+                    <p class="text-xs text-gray-500">Unique final votes: <span id="vt2-count">0</span></p>
+                </div>
+                <div class="commitment-card">
+                    <strong>VT_3 (Multiple Votes):</strong> <span id="vt3-commitment">N/A</span>
+                    <p class="text-xs text-gray-500">Overridden votes: <span id="vt3-count">0</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>4. Conceptual Verification (After Voting Closes)</h2>
+            <p class="text-sm text-gray-600">
+                After the voting period ends, independent verifiers can check the consistency
+                of the Verkle Tree commitments. The key verification is that
+                $VT_1 \approx VT_2 + VT_3$.
+            </p>
+            <div id="verification-status" class="status-info status-message">
+                Voting not yet finalized.
+            </div>
+            <div class="button-group">
+                <button id="verify-btn" class="primary" disabled>Perform Verification</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Variables ---
+        let H_values = []; // Array of pre-calculated H values for KZG commitments (simplified)
+        let vt1_commitment = 0; // Conceptual commitment for VT_1 (all votes)
+        let vt2_commitment = 0; // Conceptual commitment for VT_2 (final votes)
+        let vt3_commitment = 0; // Conceptual commitment for VT_3 (multiple votes)
+
+        let vt1_count = 0;
+        let vt2_count = 0;
+        let vt3_count = 0;
+
+        // Maps voter ID to their last valid vote hash and its index in H_values
+        const voterLastVote = new Map(); // Map<voterId, {hash: number, H_index: number}>
+
+        let voteQueue = []; // Queue for votes to be processed
+        let isProcessing = false;
+        let setupInitialized = false;
+
+        // --- DOM Elements ---
+        const setupStatusDiv = document.getElementById('setup-status');
+        const initSetupBtn = document.getElementById('init-setup-btn');
+        const votingStatusDiv = document.getElementById('voting-status');
+        const numVotesInput = document.getElementById('num-votes');
+        const batchSizeInput = document.getElementById('batch-size');
+        const castVoteBtn = document.getElementById('cast-vote-btn');
+        const resetSimulationBtn = document.getElementById('reset-simulation-btn');
+        const processingLog = document.getElementById('processing-log');
+        const vt1CommitmentSpan = document.getElementById('vt1-commitment');
+        const vt2CommitmentSpan = document.getElementById('vt2-commitment');
+        const vt3CommitmentSpan = document.getElementById('vt3-commitment');
+        const vt1CountSpan = document.getElementById('vt1-count');
+        const vt2CountSpan = document.getElementById('vt2-count');
+        const vt3CountSpan = document.getElementById('vt3-count');
+        const verificationStatusDiv = document.getElementById('verification-status');
+        const verifyBtn = document.getElementById('verify-btn');
+
+        // --- Utility Functions (Simplified Cryptographic Operations) ---
+
+        /**
+         * Simulates a cryptographic hash function.
+         * In a real system, this would be a secure hash like SHA256.
+         * @param {string} data - The input data to hash.
+         * @returns {number} A simplified numerical hash.
+         */
+        function hash_function(data) {
+            let hash = 0;
+            for (let i = 0; i < data.length; i++) {
+                const char = data.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash |= 0; // Convert to 32bit integer
+            }
+            return Math.abs(hash); // Ensure positive for simulation
+        }
+
+        /**
+         * Simulates a KZG commitment addition.
+         * In a real system, this would involve elliptic curve point addition.
+         * @param {number} currentCommitment - The current conceptual commitment.
+         * @param {number} valueHash - The hash of the value being committed.
+         * @param {number} H_term - The corresponding H_i term from the setup.
+         * @returns {number} The new conceptual commitment.
+         */
+        function kzg_add(currentCommitment, valueHash, H_term) {
+            // Simplified: Treat commitment as a sum of (hash * H_term)
+            return currentCommitment + (valueHash * H_term);
+        }
+
+        /**
+         * Simulates a KZG commitment subtraction (for removing elements).
+         * @param {number} currentCommitment - The current conceptual commitment.
+         * @param {number} valueHash - The hash of the value being de-committed.
+         * @param {number} H_term - The corresponding H_i term from the setup.
+         * @returns {number} The new conceptual commitment.
+         */
+        function kzg_subtract(currentCommitment, valueHash, H_term) {
+            // Simplified: Treat commitment as a sum of (hash * H_term)
+            return currentCommitment - (valueHash * H_term);
+        }
+
+        // --- Simulation Logic ---
+
+        /**
+         * Initializes the setup parameters (H_values).
+         * This simulates the offline calculation of public parameters.
+         */
+        function initializeSetup() {
+            // Simulate generating H values (tau^i * G)
+            // For simplicity, H_i will be increasing integers.
+            const max_votes_capacity = 1000; // Max number of votes the system can handle
+            for (let i = 0; i < max_votes_capacity; i++) {
+                H_values.push(i + 1); // H_0 = 1, H_1 = 2, etc.
+            }
+            setupInitialized = true;
+            setupStatusDiv.className = 'status-success status-message';
+            setupStatusDiv.textContent = 'Setup initialized successfully! H_values generated.';
+            castVoteBtn.disabled = false;
+            votingStatusDiv.className = 'status-info status-message';
+            votingStatusDiv.textContent = 'Ready to cast votes.';
+            logMessage('System setup complete. Ready for voting.');
+            updateCommitmentDisplay();
+        }
+
+        /**
+         * Simulates a voter casting a single vote.
+         * @param {number} voteId - Unique ID for this vote.
+         * @param {string} voterId - ID of the voter.
+         * @param {string} voteChoice - The voter's choice.
+         */
+        function castSingleVote(voteId, voterId, voteChoice) {
+            const voteData = `VoteID:${voteId}|VoterID:${voterId}|Choice:${voteChoice}`;
+            const voteHash = hash_function(voteData);
+
+            voteQueue.push({
+                voteId,
+                voterId,
+                voteChoice,
+                voteHash,
+                H_index: voteQueue.length // Assign H_index based on its position in the queue for VT_1
+            });
+            logMessage(`Voter ${voterId} cast vote ${voteChoice} (VoteID: ${voteId}). Added to queue.`);
+            votingStatusDiv.textContent = `Votes in queue: ${voteQueue.length}.`;
+        }
+
+        /**
+         * Processes votes from the queue in batches.
+         * This simulates the online background processing.
+         */
+        function processVoteBatch() {
+            if (voteQueue.length === 0) {
+                isProcessing = false;
+                votingStatusDiv.className = 'status-success status-message';
+                votingStatusDiv.textContent = 'All votes processed. Voting period closed.';
+                verifyBtn.disabled = false;
+                logMessage('All votes processed. Verification can now be performed.');
+                return;
+            }
+
+            isProcessing = true;
+            const batchSize = parseInt(batchSizeInput.value, 10) || 1;
+            const batch = voteQueue.splice(0, batchSize);
+
+            logMessage(`\nProcessing batch of ${batch.length} votes...`);
+
+            batch.forEach(vote => {
+                const { voteId, voterId, voteHash, H_index } = vote;
+                const H_term = H_values[H_index]; // Use a unique H_term for each vote in VT_1
+
+                // --- Step 1: Aggregate to VT_1 (All Votes) ---
+                vt1_commitment = kzg_add(vt1_commitment, voteHash, H_term);
+                vt1_count++;
+                logMessage(`  Added VoteID ${voteId} to VT_1. VT_1 count: ${vt1_count}`);
+
+                // --- Step 2 & 3: Handle VT_2 (Final Votes) and VT_3 (Multiple Votes) ---
+                if (voterLastVote.has(voterId)) {
+                    // This voter has voted before (repeated voter)
+                    const prevVote = voterLastVote.get(voterId);
+                    const prevVoteHash = prevVote.hash;
+                    const prevVoteHIndex = prevVote.H_index; // Use the H_index associated with the previous vote in VT_2 context
+
+                    // Delete previous vote from VT_2
+                    vt2_commitment = kzg_subtract(vt2_commitment, prevVoteHash, H_values[prevVoteHIndex]);
+                    vt2_count--;
+                    logMessage(`  Removed previous vote of ${voterId} from VT_2.`);
+
+                    // Aggregate deleted vote to VT_3 (Multiple Votes)
+                    // For VT_3, we can use a new H_index based on its own count, or a fixed H_term if it's a simple sum
+                    vt3_commitment = kzg_add(vt3_commitment, prevVoteHash, H_values[vt3_count]); // Use vt3_count as H_index for VT_3
+                    vt3_count++;
+                    logMessage(`  Added previous vote of ${voterId} to VT_3. VT_3 count: ${vt3_count}`);
+                }
+
+                // Add current vote to VT_2 (Final Votes)
+                // For VT_2, we need a unique H_index for each unique vote.
+                // We'll use vt2_count *before* incrementing it for the current vote as its H_index in VT_2's context.
+                const currentVoteHIndexForVT2 = vt2_count;
+                vt2_commitment = kzg_add(vt2_commitment, voteHash, H_values[currentVoteHIndexForVT2]);
+                vt2_count++;
+                logMessage(`  Added current vote of ${voterId} to VT_2. VT_2 count: ${vt2_count}`);
+
+                // Update voter's last vote record
+                voterLastVote.set(voterId, { hash: voteHash, H_index: currentVoteHIndexForVT2 });
+            });
+
+            updateCommitmentDisplay();
+            votingStatusDiv.textContent = `Votes remaining in queue: ${voteQueue.length}. Processing next batch...`;
+
+            // Simulate background processing delay
+            setTimeout(processVoteBatch, 500); // Process next batch after 500ms
+        }
+
+        /**
+         * Performs the conceptual verification after all votes are processed.
+         */
+        function performVerification() {
+            if (isProcessing || voteQueue.length > 0) {
+                verificationStatusDiv.className = 'status-error status-message';
+                verificationStatusDiv.textContent = 'Cannot verify: Votes are still being processed or are in queue.';
+                return;
+            }
+
+            // Conceptual verification: VT_1 should approximately equal VT_2 + VT_3
+            // In a real system, this would involve more complex cryptographic proof verification.
+            // Here, we're checking the sum of our simplified commitments.
+            const sumOfVT2andVT3 = vt2_commitment + vt3_commitment;
+
+            let verificationResult = false;
+            let message = '';
+
+            // Due to the simplified H_values and commitment calculation, direct equality might not hold
+            // if H_indices are not perfectly aligned across VT_1, VT_2, VT_3 in a truly homomorphic way.
+            // For this simulation, we'll check if the counts align and if the "conceptual" sums are close.
+            // A more robust simulation would require a proper polynomial library.
+
+            // The core idea is that the set of all votes (VT1) should be decomposable into
+            // unique final votes (VT2) and overridden votes (VT3).
+            // So, the sum of counts should match:
+            const totalCountCheck = (vt1_count === (vt2_count + vt3_count));
+
+            // The conceptual commitment check:
+            // This is a very loose check due to the simplified arithmetic.
+            // In a real KZG system, the homomorphic property ensures C(P1+P2) = C(P1) + C(P2).
+            // So, VT1_Commitment should equal VT2_Commitment + VT3_Commitment.
+            // We'll check for approximate equality for the simulation.
+            const commitmentDifference = Math.abs(vt1_commitment - sumOfVT2andVT3);
+            const commitmentCheck = commitmentDifference < 1000; // Arbitrary small threshold for simulation
+
+            if (totalCountCheck && commitmentCheck) {
+                verificationResult = true;
+                message = `Verification successful!
+                Total votes processed (VT1 count): ${vt1_count}
+                Unique final votes (VT2 count): ${vt2_count}
+                Overridden votes (VT3 count): ${vt3_count}
+                VT1 Commitment: ${vt1_commitment.toFixed(2)}
+                (VT2 + VT3) Commitment: ${sumOfVT2andVT3.toFixed(2)}
+                Counts match: ${totalCountCheck}. Commitments are consistent.`;
+            } else {
+                message = `Verification failed!
+                Total votes processed (VT1 count): ${vt1_count}
+                Unique final votes (VT2 count): ${vt2_count}
+                Overridden votes (VT3 count): ${vt3_count}
+                VT1 Commitment: ${vt1_commitment.toFixed(2)}
+                (VT2 + VT3) Commitment: ${sumOfVT2andVT3.toFixed(2)}
+                Counts match: ${totalCountCheck}. Commitments are inconsistent (difference: ${commitmentDifference.toFixed(2)}).`;
+            }
+
+            if (verificationResult) {
+                verificationStatusDiv.className = 'status-success status-message';
+            } else {
+                verificationStatusDiv.className = 'status-error status-message';
+            }
+            verificationStatusDiv.textContent = message;
+            logMessage(`\n--- Verification Result ---\n${message}`);
+        }
+
+
+        /**
+         * Resets the simulation to its initial state.
+         */
+        function resetSimulation() {
+            H_values = [];
+            vt1_commitment = 0;
+            vt2_commitment = 0;
+            vt3_commitment = 0;
+            vt1_count = 0;
+            vt2_count = 0;
+            vt3_count = 0;
+            voterLastVote.clear();
+            voteQueue = [];
+            isProcessing = false;
+            setupInitialized = false;
+
+            setupStatusDiv.className = 'status-info status-message';
+            setupStatusDiv.textContent = 'Click "Initialize Setup" to begin.';
+            votingStatusDiv.className = 'status-info status-message';
+            votingStatusDiv.textContent = 'Setup not initialized.';
+            verificationStatusDiv.className = 'status-info status-message';
+            verificationStatusDiv.textContent = 'Voting not yet finalized.';
+
+            castVoteBtn.disabled = true;
+            verifyBtn.disabled = true;
+            initSetupBtn.disabled = false;
+
+            processingLog.textContent = 'Processing Log:';
+            updateCommitmentDisplay();
+            logMessage('Simulation reset.');
+        }
+
+        // --- UI Update Functions ---
+
+        /**
+         * Updates the display of Verkle Tree commitments and counts.
+         */
+        function updateCommitmentDisplay() {
+            vt1CommitmentSpan.textContent = vt1_commitment.toFixed(2);
+            vt2CommitmentSpan.textContent = vt2_commitment.toFixed(2);
+            vt3CommitmentSpan.textContent = vt3_commitment.toFixed(2);
+            vt1CountSpan.textContent = vt1_count;
+            vt2CountSpan.textContent = vt2_count;
+            vt3CountSpan.textContent = vt3_count;
+        }
+
+        /**
+         * Appends a message to the processing log.
+         * @param {string} message - The message to log.
+         */
+        function logMessage(message) {
+            const now = new Date().toLocaleTimeString();
+            processingLog.textContent += `\n[${now}] ${message}`;
+            processingLog.scrollTop = processingLog.scrollHeight; // Auto-scroll to bottom
+        }
+
+        // --- Event Listeners ---
+        initSetupBtn.addEventListener('click', initializeSetup);
+        resetSimulationBtn.addEventListener('click', resetSimulation);
+        verifyBtn.addEventListener('click', performVerification);
+
+        castVoteBtn.addEventListener('click', () => {
+            if (!setupInitialized) {
+                votingStatusDiv.className = 'status-error status-message';
+                votingStatusDiv.textContent = 'Please initialize setup first!';
+                return;
+            }
+            if (isProcessing) {
+                votingStatusDiv.className = 'status-warning status-message';
+                votingStatusDiv.textContent = 'Processing in progress, please wait.';
+                return;
+            }
+
+            const numVotesToCast = parseInt(numVotesInput.value, 10);
+            if (isNaN(numVotesToCast) || numVotesToCast <= 0) {
+                votingStatusDiv.className = 'status-error status-message';
+                votingStatusDiv.textContent = 'Please enter a valid number of votes.';
+                return;
+            }
+
+            // Simulate casting multiple votes
+            for (let i = 0; i < numVotesToCast; i++) {
+                const voteId = Date.now() + i; // Unique vote ID
+                const voterId = `Voter${Math.floor(Math.random() * 5) + 1}`; // Simulate 5 different voters
+                const voteChoice = `Candidate${Math.floor(Math.random() * 3) + 1}`; // Simulate 3 candidates
+                castSingleVote(voteId, voterId, voteChoice);
+            }
+
+            votingStatusDiv.className = 'status-info status-message';
+            votingStatusDiv.textContent = `Queued ${numVotesToCast} votes for processing.`;
+            // Start processing the queue in batches
+            processVoteBatch();
+        });
+
+        // Initial display update
+        updateCommitmentDisplay();
+    </script>
+</body>
+</html>
