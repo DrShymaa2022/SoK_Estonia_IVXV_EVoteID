@@ -1,3 +1,4 @@
+// you can run it yourself at (https://g.co/gemini/share/9c2515e07774)
 import { useState, useEffect, createElement } from 'react';
 
 // Helper function to simulate SHA-256 hashing
